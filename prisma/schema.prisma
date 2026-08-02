@@ -1,0 +1,45 @@
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// Conversation model for Claude-style chat history
+model Conversation {
+  id        String    @id @default(uuid())
+  title     String
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  messages  Message[]
+}
+
+// Message model supporting text content, tool calls, and role-based responses
+model Message {
+  id             String       @id @default(uuid())
+  conversationId String
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  role           String       // "user", "assistant", "system"
+  content        String
+  model          String?      // Model name used for generation
+  tokensUsed     Int?
+  createdAt      DateTime     @default(now())
+}
+
+// AuditLog model to track files modified and terminal commands executed
+model AuditLog {
+  id          String   @id @default(uuid())
+  actionType  String   // "file_read", "file_write", "terminal_exec", "git_commit"
+  target      String   // Path to file or command string
+  reason      String?  // Rationale provided by AI agent
+  status      String   // "approved", "rejected", "executed", "failed"
+  executedAt  DateTime @default(now())
+}
+
+// Settings model to persist configuration state
+model Setting {
+  key   String @id
+  value String // JSON stringified configuration
+}
