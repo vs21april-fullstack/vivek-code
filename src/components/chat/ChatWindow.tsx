@@ -20,7 +20,89 @@ export default function ChatWindow() {
     ollamaModels,
     isOllamaConnected,
     settings,
+    activeWorkspace,
+    setProposedChanges,
   } = useApp();
+
+  const parseStreamProposedChanges = (text: string) => {
+    const createRegex = /<<<<\s*CREATE:\s*(.*?)\s*\n([\s\S]*?)>>>>/g;
+    const modifyRegex = /<<<<\s*MODIFY:\s*(.*?)\s*\n([\s\S]*?)>>>>/g;
+
+    const changes: any[] = [];
+    let match;
+    let foundTagChange = false;
+
+    // 1. Try custom tags
+    while ((match = createRegex.exec(text)) !== null) {
+      foundTagChange = true;
+      const filePath = match[1].trim();
+      const content = match[2];
+      const fullPath = filePath.startsWith('/') ? filePath : `${activeWorkspace}/${filePath}`;
+      changes.push({
+        id: `change-create-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+        action: 'create_file',
+        path: fullPath,
+        content,
+        status: 'pending',
+      });
+    }
+
+    while ((match = modifyRegex.exec(text)) !== null) {
+      foundTagChange = true;
+      const filePath = match[1].trim();
+      const content = match[2];
+      const fullPath = filePath.startsWith('/') ? filePath : `${activeWorkspace}/${filePath}`;
+      changes.push({
+        id: `change-modify-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+        action: 'modify_file',
+        path: fullPath,
+        content,
+        status: 'pending',
+      });
+    }
+
+    // 2. Fallback: Parse code blocks with filename comments (helpful for small models like Qwen 3B)
+    if (!foundTagChange) {
+      const codeBlockRegex = /```[a-zA-Z]*\n([\s\S]*?)\n```/g;
+      while ((match = codeBlockRegex.exec(text)) !== null) {
+        const codeText = match[1];
+        const lines = codeText.split('\n');
+        const firstLines = lines.slice(0, 3);
+        let detectedPath = '';
+
+        for (const line of firstLines) {
+          const trimmedLine = line.trim();
+          // Matches: // filename.js, # filename.js, /* filename.js */
+          const fileMatch = trimmedLine.match(/^(?:\/\/\s*|#\s*|\/\*\s*|<!--\s*)([a-zA-Z0-9_\-\.\/]+\.[a-zA-Z0-9]+)/i);
+          if (fileMatch) {
+            detectedPath = fileMatch[1].trim();
+            break;
+          }
+        }
+
+        if (detectedPath && !detectedPath.includes(' ') && detectedPath.includes('.')) {
+          const fullPath = detectedPath.startsWith('/') ? detectedPath : `${activeWorkspace}/${detectedPath}`;
+          changes.push({
+            id: `change-detect-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+            action: 'create_file',
+            path: fullPath,
+            content: codeText,
+            status: 'pending',
+          });
+        }
+      }
+    }
+
+    if (changes.length > 0) {
+      setProposedChanges((prev) => {
+        // Avoid duplicate paths/contents in the list
+        const unique = changes.filter(
+          (c) => !prev.some((p) => p.path === c.path && p.content === c.content)
+        );
+        return [...prev, ...unique];
+      });
+    }
+  };
 
   const queryClient = useQueryClient();
   const [messages, setMessages] = useState<Message[]>([]);
@@ -99,6 +181,15 @@ export default function ChatWindow() {
     abortControllerRef.current = controller;
 
     try {
+      const agentInstruction = `\n\nWhen writing or creating a file, you MUST output a block using this format:
+<<<< CREATE: path/to/file
+[file contents]
+>>>>
+When modifying an existing file, you MUST output:
+<<<< MODIFY: path/to/file
+[full modified file contents]
+>>>>`;
+
       const chatPayload = {
         conversationId: conversationIdToUse,
         messages: [...updatedHistory, userMsg].map((m) => ({ role: m.role, content: m.content })),
@@ -106,7 +197,7 @@ export default function ChatWindow() {
         temperature: settings?.temperature ?? 0.2,
         contextLength: settings?.contextLength ?? 8192,
         maxTokens: settings?.maxTokens ?? 2048,
-        systemPrompt: settings?.systemPrompt,
+        systemPrompt: (settings?.systemPrompt || '') + agentInstruction,
       };
 
       const res = await fetch('/api/chat', {
@@ -168,6 +259,7 @@ export default function ChatWindow() {
       }
 
       // Finish streaming, refresh query to persist
+      parseStreamProposedChanges(currentResponseText);
       queryClient.invalidateQueries({ queryKey: ['conversation', activeConvId] });
       queryClient.invalidateQueries({ queryKey: ['conversations'] });
     } catch (err: any) {
@@ -228,6 +320,199 @@ export default function ChatWindow() {
   const renderMessageContent = (content: string) => {
     if (!content) return <span className="animate-pulse">|</span>;
 
+    const parseInline = (text: string) => {
+      if (!text) return '';
+
+      // Split by inline code: `code`
+      const inlineCodeParts = text.split(/(\`[^\`\n]+\`)/g);
+
+      return inlineCodeParts.map((part, idx) => {
+        if (part.startsWith('`') && part.endsWith('`')) {
+          return (
+            <code key={idx} className="bg-slate-850 border border-slate-700/60 px-1.5 py-0.5 rounded text-violet-400 font-mono text-xs font-bold mx-0.5">
+              {part.slice(1, -1)}
+            </code>
+          );
+        }
+
+        // Split by bold (**text**)
+        const boldParts = part.split(/(\*\*[^*]+\*\*)/g);
+        return boldParts.map((bPart, bIdx) => {
+          if (bPart.startsWith('**') && bPart.endsWith('**')) {
+            return (
+              <strong key={bIdx} className="font-bold text-white">
+                {bPart.slice(2, -2)}
+              </strong>
+            );
+          }
+
+          // Split by italics (*text*)
+          const italicParts = bPart.split(/(\*[^*]+\*)/g);
+          return italicParts.map((iPart, iIdx) => {
+            if (iPart.startsWith('*') && iPart.endsWith('*')) {
+              return (
+                <em key={iIdx} className="italic text-slate-300">
+                  {iPart.slice(1, -1)}
+                </em>
+              );
+            }
+
+            // Split by links ([text](url))
+            const linkParts = iPart.split(/(\[[^\]]+\]\([^)]+\))/g);
+            return linkParts.map((lPart, lIdx) => {
+              const linkMatch = lPart.match(/\[([^\]]+)\]\(([^)]+)\)/);
+              if (linkMatch) {
+                return (
+                  <a
+                    key={lIdx}
+                    href={linkMatch[2]}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-violet-400 hover:underline font-semibold"
+                  >
+                    {linkMatch[1]}
+                  </a>
+                );
+              }
+              return lPart;
+            });
+          });
+        });
+      });
+    };
+
+    const parseMarkdownBlocks = (text: string, blockKey: number) => {
+      const lines = text.split('\n');
+      const elements: React.ReactNode[] = [];
+      let currentListItems: React.ReactNode[] = [];
+      let currentListType: 'ul' | 'ol' | null = null;
+      let pLines: string[] = [];
+
+      const flushParagraph = (key: string) => {
+        if (pLines.length > 0) {
+          elements.push(
+            <p key={`p-${key}`} className="leading-relaxed text-sm text-slate-300 my-2">
+              {parseInline(pLines.join('\n'))}
+            </p>
+          );
+          pLines = [];
+        }
+      };
+
+      const flushList = (key: string) => {
+        if (currentListItems.length > 0) {
+          if (currentListType === 'ul') {
+            elements.push(
+              <ul key={`ul-${key}`} className="list-disc pl-5 my-2 space-y-1 text-slate-350">
+                {currentListItems}
+              </ul>
+            );
+          } else {
+            elements.push(
+              <ol key={`ol-${key}`} className="list-decimal pl-5 my-2 space-y-1 text-slate-350">
+                {currentListItems}
+              </ol>
+            );
+          }
+          currentListItems = [];
+          currentListType = null;
+        }
+      };
+
+      for (let i = 0; i < lines.length; i++) {
+        const line = lines[i];
+        const trimmed = line.trim();
+        const key = `${blockKey}-${i}`;
+
+        // 1. Headers
+        if (trimmed.startsWith('#### ')) {
+          flushParagraph(key);
+          flushList(key);
+          elements.push(<h4 key={`h4-${key}`} className="text-sm font-bold text-white mt-4 mb-1.5">{parseInline(trimmed.slice(5))}</h4>);
+          continue;
+        }
+        if (trimmed.startsWith('### ')) {
+          flushParagraph(key);
+          flushList(key);
+          elements.push(<h3 key={`h3-${key}`} className="text-base font-bold text-white mt-5 mb-2">{parseInline(trimmed.slice(4))}</h3>);
+          continue;
+        }
+        if (trimmed.startsWith('## ')) {
+          flushParagraph(key);
+          flushList(key);
+          elements.push(<h2 key={`h2-${key}`} className="text-lg font-bold text-white mt-6 mb-2.5 border-b border-slate-800 pb-1">{parseInline(trimmed.slice(3))}</h2>);
+          continue;
+        }
+        if (trimmed.startsWith('# ')) {
+          flushParagraph(key);
+          flushList(key);
+          elements.push(<h1 key={`h1-${key}`} className="text-xl font-black text-white mt-7 mb-3 border-b border-slate-800 pb-1.5">{parseInline(trimmed.slice(2))}</h1>);
+          continue;
+        }
+
+        // 2. Horizontal Rules
+        if (trimmed === '---' || trimmed === '***') {
+          flushParagraph(key);
+          flushList(key);
+          elements.push(<hr key={`hr-${key}`} className="border-slate-850 my-4" />);
+          continue;
+        }
+
+        // 3. Blockquotes
+        if (trimmed.startsWith('> ')) {
+          flushParagraph(key);
+          flushList(key);
+          elements.push(
+            <blockquote key={`quote-${key}`} className="border-l-4 border-violet-500/60 bg-slate-900/40 pl-4 py-2 pr-2 my-2.5 rounded-r-xl text-slate-400 italic">
+              {parseInline(trimmed.slice(2))}
+            </blockquote>
+          );
+          continue;
+        }
+
+        // 4. Unordered Lists
+        if (trimmed.startsWith('- ') || trimmed.startsWith('* ')) {
+          flushParagraph(key);
+          if (currentListType && currentListType !== 'ul') {
+            flushList(key);
+          }
+          currentListType = 'ul';
+          const cleanLine = trimmed.replace(/^[-*]\s+/, '');
+          currentListItems.push(<li key={`li-${key}`}>{parseInline(cleanLine)}</li>);
+          continue;
+        }
+
+        // 5. Ordered Lists
+        const orderedMatch = trimmed.match(/^(\d+)\.\s+(.*)/);
+        if (orderedMatch) {
+          flushParagraph(key);
+          if (currentListType && currentListType !== 'ol') {
+            flushList(key);
+          }
+          currentListType = 'ol';
+          currentListItems.push(<li key={`li-${key}`}>{parseInline(orderedMatch[2])}</li>);
+          continue;
+        }
+
+        // 6. Blank Line
+        if (!trimmed) {
+          flushParagraph(key);
+          flushList(key);
+          continue;
+        }
+
+        // 7. Text accumulation for paragraphs
+        flushList(key);
+        pLines.push(line);
+      }
+
+      // Flush remainder
+      flushParagraph(`end-${blockKey}`);
+      flushList(`end-${blockKey}`);
+
+      return elements;
+    };
+
     const parts = content.split(/(\`\`\`[a-zA-Z]*\n[\s\S]*?\n\`\`\`)/g);
 
     return parts.map((part, index) => {
@@ -250,29 +535,18 @@ export default function ChatWindow() {
                 Copy
               </button>
             </div>
-            <pre className="p-4 overflow-x-auto text-slate-300 leading-relaxed font-mono">
+            <pre className="p-4 overflow-x-auto text-slate-350 leading-relaxed font-mono">
               <code>{codeText}</code>
             </pre>
           </div>
         );
       }
 
-      // Inline code rendering and standard paragraph breaking
-      const subparts = part.split(/(\`[^\`\n]+\`)/g);
+      // Standard Text block markdown translation
       return (
-        <p key={index} className="leading-relaxed whitespace-pre-line text-sm text-slate-200">
-          {subparts.map((subpart, subidx) => {
-            if (subpart.startsWith('`') && subpart.endsWith('`')) {
-              const inlineCode = subpart.slice(1, -1);
-              return (
-                <code key={subidx} className="bg-slate-850 border border-slate-700/60 px-1.5 py-0.5 rounded text-violet-400 font-mono text-xs font-bold mx-0.5">
-                  {inlineCode}
-                </code>
-              );
-            }
-            return subpart;
-          })}
-        </p>
+        <div key={index} className="flex flex-col">
+          {parseMarkdownBlocks(part, index)}
+        </div>
       );
     });
   };

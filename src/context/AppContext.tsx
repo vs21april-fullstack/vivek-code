@@ -75,6 +75,20 @@ interface AppContextType {
   setIsSplitEditor: (split: boolean) => void;
   activeExplorerTab: 'chat' | 'explorer' | 'git' | 'logs';
   setActiveExplorerTab: (tab: 'chat' | 'explorer' | 'git' | 'logs') => void;
+
+  // Phase 3 Agent states
+  proposedChanges: ProposedChange[];
+  setProposedChanges: React.Dispatch<React.SetStateAction<ProposedChange[]>>;
+  approveChange: (changeId: string) => Promise<void>;
+  rejectChange: (changeId: string) => void;
+}
+
+export interface ProposedChange {
+  id: string;
+  action: 'create_file' | 'modify_file';
+  path: string;
+  content: string;
+  status: 'pending' | 'approved' | 'rejected';
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -159,6 +173,53 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const updateTabContent = (filePath: string, content: string) => {
     setOpenTabs((prev) =>
       prev.map((t) => (t.path === filePath ? { ...t, content, isDirty: true } : t))
+    );
+  };
+
+  const [proposedChanges, setProposedChanges] = useState<ProposedChange[]>([]);
+
+  const approveChange = async (changeId: string) => {
+    const change = proposedChanges.find((c) => c.id === changeId);
+    if (!change) return;
+
+    try {
+      if (change.action === 'create_file') {
+        const createRes = await fetch('/api/files/operation', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'create_file', path: change.path, content: change.content }),
+        });
+        if (!createRes.ok) {
+          const errData = await createRes.json();
+          throw new Error(errData.error || 'Create operation failed');
+        }
+      } else {
+        const writeRes = await fetch('/api/files/write', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ path: change.path, content: change.content }),
+        });
+        if (!writeRes.ok) {
+          const errData = await writeRes.json();
+          throw new Error(errData.error || 'Write operation failed');
+        }
+      }
+
+      setProposedChanges((prev) =>
+        prev.map((c) => (c.id === changeId ? { ...c, status: 'approved' } : c))
+      );
+
+      // Open in editor
+      const fileName = change.path.split(/[\\/]/).pop() || 'file';
+      await openFile(change.path, fileName);
+    } catch (err: any) {
+      alert(`Error applying changes: ${err.message}`);
+    }
+  };
+
+  const rejectChange = (changeId: string) => {
+    setProposedChanges((prev) =>
+      prev.map((c) => (c.id === changeId ? { ...c, status: 'rejected' } : c))
     );
   };
   // 1. Fetch settings from API
@@ -284,6 +345,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
         setIsSplitEditor,
         activeExplorerTab,
         setActiveExplorerTab,
+        proposedChanges,
+        setProposedChanges,
+        approveChange,
+        rejectChange,
       }}
     >
       {children}

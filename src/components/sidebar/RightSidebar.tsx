@@ -9,6 +9,10 @@ export default function RightSidebar() {
     settings,
     saveSettings,
     isRightSidebarOpen,
+    proposedChanges,
+    approveChange,
+    rejectChange,
+    activeWorkspace,
   } = useApp();
 
   if (!isRightSidebarOpen) return null;
@@ -128,41 +132,71 @@ export default function RightSidebar() {
         )}
       </div>
 
-      {/* Agent Workflow Sandbox Simulation (Phase 1 preview) */}
+      {/* Agent Workflow Proposed Changes (Phase 3) */}
       <div className="p-4 flex-1 flex flex-col min-h-64">
         <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3 flex items-center gap-1.5">
           <CheckSquare className="w-4 h-4 text-violet-400" />
-          Agent Mode Sandbox
+          Proposed Changes
         </h3>
         
-        {/* Placeholder / Simulation Box */}
-        <div className="flex-1 rounded-2xl bg-slate-950/70 border border-slate-850 p-3.5 flex flex-col justify-between text-left">
-          <div className="space-y-2">
-            <span className="text-[11px] font-bold text-slate-300 block">Simulated Diff Preview</span>
-            <div className="p-2.5 rounded-lg bg-slate-900 border border-slate-850 font-mono text-[9px] leading-relaxed text-slate-400">
-              <span className="text-red-400 block">- const assistant = 'offline';</span>
-              <span className="text-emerald-400 block">+ const assistant = 'Vivek Code';</span>
-            </div>
-            <span className="text-[10px] text-slate-400 block leading-normal mt-2.5">
-              In **Agent Mode**, V Code drafts structural modifications and requests review before writing to your directory.
+        {proposedChanges.length === 0 ? (
+          <div className="flex-1 rounded-2xl bg-slate-950/70 border border-slate-850 p-4 flex flex-col items-center justify-center text-center select-none text-slate-650">
+            <span className="text-[10px] uppercase font-bold tracking-wider">No proposed changes</span>
+            <span className="text-[9px] text-slate-500 mt-1 block">
+              Ask V Code to "create" or "modify" a file to see changes here.
             </span>
           </div>
+        ) : (
+          <div className="flex-1 flex flex-col gap-2 overflow-y-auto max-h-[360px] pr-1">
+            {proposedChanges.map((change) => {
+              const relativePath = change.path.replace(activeWorkspace + '/', '');
+              
+              return (
+                <div key={change.id} className="p-3 rounded-xl bg-slate-950 border border-slate-850 flex flex-col gap-2 text-left">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-violet-650/15 border border-violet-500/20 text-violet-400 font-bold uppercase tracking-wider">
+                      {change.action === 'create_file' ? 'Create' : 'Modify'}
+                    </span>
+                    <span className={`text-[9px] font-bold uppercase tracking-wider ${
+                      change.status === 'pending'
+                        ? 'text-amber-400'
+                        : change.status === 'approved'
+                        ? 'text-emerald-400'
+                        : 'text-red-400'
+                    }`}>
+                      {change.status}
+                    </span>
+                  </div>
 
-          <div className="flex flex-col gap-1.5 mt-4">
-            <button
-              onClick={() => alert('Agent Sandboxed Changes Approved!')}
-              className="w-full py-1.5 bg-violet-600/25 border border-violet-500/30 hover:bg-violet-600/35 text-violet-400 font-bold rounded-lg text-[10px] transition text-center"
-            >
-              Approve Changes
-            </button>
-            <button
-              onClick={() => alert('Agent Sandboxed Changes Rejected.')}
-              className="w-full py-1.5 border border-slate-800 hover:bg-slate-850 text-slate-500 hover:text-slate-300 font-semibold rounded-lg text-[10px] transition text-center"
-            >
-              Reject
-            </button>
+                  <span className="text-[10.5px] font-bold text-slate-200 truncate font-mono" title={change.path}>
+                    {relativePath}
+                  </span>
+
+                  {change.status === 'pending' ? (
+                    <div className="flex gap-1.5 mt-1 select-none">
+                      <button
+                        onClick={() => approveChange(change.id)}
+                        className="flex-1 py-1 bg-violet-600 hover:bg-violet-500 active:bg-violet-750 text-white font-bold rounded-md text-[9px] transition text-center"
+                      >
+                        Approve
+                      </button>
+                      <button
+                        onClick={() => rejectChange(change.id)}
+                        className="flex-1 py-1 border border-slate-800 hover:bg-slate-850 text-slate-400 hover:text-slate-200 font-semibold rounded-md text-[9px] transition text-center"
+                      >
+                        Reject
+                      </button>
+                    </div>
+                  ) : (
+                    <span className="text-[9.5px] text-slate-500 font-semibold italic mt-0.5">
+                      Change has been {change.status}.
+                    </span>
+                  )}
+                </div>
+              );
+            })}
           </div>
-        </div>
+        )}
       </div>
 
     </div>
