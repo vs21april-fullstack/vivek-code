@@ -552,10 +552,10 @@ When modifying an existing file, you MUST output:
   };
 
   return (
-    <div className="flex-1 flex flex-col h-full bg-slate-950 overflow-hidden">
+    <div className="flex-1 flex flex-col h-full bg-white dark:bg-slate-950 overflow-hidden">
       
       {/* Model Selection Header */}
-      <div className="px-6 py-3 border-b border-slate-850 bg-slate-900/10 flex items-center justify-between select-none">
+      <div className="px-6 py-3 border-b border-slate-200 dark:border-slate-850 bg-slate-50/50 dark:bg-slate-900/10 flex items-center justify-between select-none">
         
         {/* Model Picker */}
         <div className="flex items-center gap-3">
@@ -563,13 +563,13 @@ When modifying an existing file, you MUST output:
           <select
             value={activeModel}
             onChange={(e) => setActiveModel(e.target.value)}
-            className="bg-transparent text-sm font-bold text-slate-200 focus:outline-none cursor-pointer pr-4 border-r border-slate-800"
+            className="bg-transparent text-sm font-bold text-slate-700 dark:text-slate-200 focus:outline-none cursor-pointer pr-4 border-r border-slate-200 dark:border-slate-800"
           >
             {ollamaModels.length === 0 ? (
               <option value="">No models installed</option>
             ) : (
               ollamaModels.map((m: any) => (
-                <option key={m.name} value={m.name} className="bg-slate-900 text-slate-200">
+                <option key={m.name} value={m.name} className="bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200">
                   {m.name}
                 </option>
               ))
@@ -585,7 +585,7 @@ When modifying an existing file, you MUST output:
                 className={`px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider transition ${
                   activeMode === mode
                     ? 'bg-violet-600 text-white shadow shadow-violet-950/20'
-                    : 'text-slate-500 hover:bg-slate-850 hover:text-slate-300'
+                    : 'text-slate-500 hover:bg-slate-200 dark:hover:bg-slate-850 hover:text-slate-700 dark:hover:text-slate-300'
                 }`}
               >
                 {mode}
@@ -595,7 +595,7 @@ When modifying an existing file, you MUST output:
         </div>
 
         {/* Ollama Connection Dot */}
-        <div className="flex items-center gap-2 text-xs font-medium text-slate-400">
+        <div className="flex items-center gap-2 text-xs font-medium text-slate-500 dark:text-slate-400">
           <span className={`w-2 h-2 rounded-full ${isOllamaConnected ? 'bg-emerald-500' : 'bg-red-500'}`}></span>
           {isOllamaConnected ? 'Ollama Online' : 'Ollama Offline'}
         </div>
@@ -610,8 +610,8 @@ When modifying an existing file, you MUST output:
               <Sparkles className="w-6 h-6 animate-pulse" />
             </div>
             <div className="space-y-1.5">
-              <h3 className="text-sm font-bold text-white">Ask Vivek Code Anything</h3>
-              <p className="text-xs text-slate-400 leading-relaxed">
+              <h3 className="text-sm font-bold text-slate-800 dark:text-white">Ask Vivek Code Anything</h3>
+              <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
                 V Code is ready to explore your workspace code. Type a message below or use context selectors to start.
               </p>
             </div>
@@ -619,14 +619,14 @@ When modifying an existing file, you MUST output:
             <div className="grid grid-cols-2 gap-2.5 w-full text-left pt-2.5">
               <button
                 onClick={() => setInput('Explain the system architecture')}
-                className="p-3 bg-slate-900/50 hover:bg-slate-900 border border-slate-850 rounded-xl text-[11px] text-slate-300 font-medium transition"
+                className="p-3 bg-slate-50 hover:bg-slate-100 dark:bg-slate-900/50 dark:hover:bg-slate-900 border border-slate-200 dark:border-slate-850 rounded-xl text-[11px] text-slate-700 dark:text-slate-300 font-medium transition"
               >
                 <Globe className="w-3.5 h-3.5 text-violet-400 mb-1" />
                 Explain architecture
               </button>
               <button
                 onClick={() => setInput('How do I run tests in this repository?')}
-                className="p-3 bg-slate-900/50 hover:bg-slate-900 border border-slate-850 rounded-xl text-[11px] text-slate-300 font-medium transition"
+                className="p-3 bg-slate-50 hover:bg-slate-100 dark:bg-slate-900/50 dark:hover:bg-slate-900 border border-slate-200 dark:border-slate-850 rounded-xl text-[11px] text-slate-700 dark:text-slate-300 font-medium transition"
               >
                 <Terminal className="w-3.5 h-3.5 text-emerald-400 mb-1" />
                 How to run tests
@@ -651,8 +651,8 @@ When modifying an existing file, you MUST output:
                 {/* Message Bubble */}
                 <div className={`group relative max-w-2xl px-4 py-3 rounded-2xl border text-sm ${
                   isUser
-                    ? 'bg-violet-600/10 border-violet-500/20 text-slate-200'
-                    : 'bg-slate-900/40 border-slate-850 text-slate-300'
+                    ? 'bg-violet-600/10 border-violet-500/20 text-slate-800 dark:text-slate-200'
+                    : 'bg-slate-50 dark:bg-slate-900/40 border-slate-200 dark:border-slate-850 text-slate-600 dark:text-slate-300'
                 }`}>
                   
                   {/* Editing Message Mode */}
@@ -661,13 +661,13 @@ When modifying an existing file, you MUST output:
                       <textarea
                         value={editInput}
                         onChange={(e) => setEditInput(e.target.value)}
-                        className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs text-slate-200 focus:outline-none resize-none font-mono"
+                        className="w-full bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl p-2.5 text-xs text-slate-800 dark:text-slate-200 focus:outline-none resize-none font-mono"
                         rows={3}
                       />
                       <div className="flex justify-end gap-2 text-[10px]">
                         <button
                           onClick={() => setEditingMessageId(null)}
-                          className="px-2.5 py-1.5 border border-slate-800 rounded-lg text-slate-400 hover:text-slate-200 font-semibold transition"
+                          className="px-2.5 py-1.5 border border-slate-200 dark:border-slate-800 rounded-lg text-slate-500 dark:text-slate-400 hover:text-slate-750 dark:hover:text-slate-250 font-semibold transition"
                         >
                           Cancel
                         </button>
@@ -694,7 +694,7 @@ When modifying an existing file, you MUST output:
                       )}
 
                       {/* Hover action menu for edits or copies */}
-                      <div className="absolute top-2 right-2 hidden group-hover:flex items-center gap-1.5 bg-slate-900 border border-slate-800/80 px-2 py-1 rounded-xl shadow shadow-slate-950/40">
+                      <div className="absolute top-2 right-2 hidden group-hover:flex items-center gap-1.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800/80 px-2 py-1 rounded-xl shadow shadow-slate-200 dark:shadow-slate-950/40">
                         <button
                           onClick={() => {
                             if (isUser) {
@@ -704,7 +704,7 @@ When modifying an existing file, you MUST output:
                               copyToClipboard(msg.content);
                             }
                           }}
-                          className="p-1 hover:bg-slate-800 rounded text-slate-400 hover:text-slate-200 transition"
+                          className="p-1 hover:bg-slate-100 dark:hover:bg-slate-800 rounded text-slate-400 hover:text-slate-250 transition"
                           title={isUser ? 'Edit prompt' : 'Copy message'}
                         >
                           {isUser ? <Edit3 className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
@@ -715,7 +715,7 @@ When modifying an existing file, you MUST output:
                 </div>
 
                 {isUser && (
-                  <div className="w-8 h-8 rounded-lg bg-slate-800 border border-slate-700 text-slate-300 font-bold text-xs flex items-center justify-center shrink-0">
+                  <div className="w-8 h-8 rounded-lg bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-650 dark:text-slate-300 font-bold text-xs flex items-center justify-center shrink-0">
                     U
                   </div>
                 )}
@@ -728,14 +728,14 @@ When modifying an existing file, you MUST output:
       </div>
 
       {/* Message Input Form */}
-      <div className="px-6 py-4 border-t border-slate-850 bg-slate-900/10">
+      <div className="px-6 py-4 border-t border-slate-200 dark:border-slate-850 bg-slate-50/40 dark:bg-slate-900/10">
         
         <form
           onSubmit={(e) => {
             e.preventDefault();
             handleSend(input);
           }}
-          className="relative flex items-end gap-2 bg-slate-950 border border-slate-850 hover:border-slate-800/80 focus-within:border-violet-500/80 rounded-2xl p-2 transition shadow-inner"
+          className="relative flex items-end gap-2 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-850 hover:border-slate-300 dark:hover:border-slate-800/80 focus-within:border-violet-500/80 rounded-2xl p-2 transition shadow-sm"
         >
           {/* Main textarea */}
           <textarea
@@ -748,7 +748,7 @@ When modifying an existing file, you MUST output:
               }
             }}
             placeholder={`Ask V Code in ${activeMode.toUpperCase()} mode... (@ to attach context)`}
-            className="flex-1 max-h-36 min-h-[44px] px-3.5 py-2.5 bg-transparent text-sm text-slate-200 focus:outline-none resize-none"
+            className="flex-1 max-h-36 min-h-[44px] px-3.5 py-2.5 bg-transparent text-sm text-slate-700 dark:text-slate-200 focus:outline-none resize-none"
             rows={1}
           />
 
@@ -758,7 +758,7 @@ When modifying an existing file, you MUST output:
               <button
                 type="button"
                 onClick={handleStop}
-                className="p-2 bg-red-650 hover:bg-red-500/20 border border-red-500/30 text-red-400 rounded-xl transition shadow"
+                className="p-2 bg-red-655 bg-red-600 hover:bg-red-500/20 border border-red-500/30 text-red-400 rounded-xl transition shadow"
                 title="Stop generation"
               >
                 <StopCircle className="w-4 h-4" />
@@ -769,7 +769,7 @@ When modifying an existing file, you MUST output:
                   <button
                     type="button"
                     onClick={handleRegenerate}
-                    className="p-2 border border-slate-800 hover:bg-slate-850 text-slate-400 hover:text-slate-200 rounded-xl transition"
+                    className="p-2 border border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-850 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-xl transition"
                     title="Regenerate response"
                   >
                     <RefreshCw className="w-4 h-4" />
@@ -782,7 +782,7 @@ When modifying an existing file, you MUST output:
                   className={`p-2 rounded-xl transition shadow ${
                     input.trim()
                       ? 'bg-violet-600 hover:bg-violet-500 active:bg-violet-750 text-white shadow-violet-950/20'
-                      : 'bg-slate-900 border border-slate-850 text-slate-500 cursor-not-allowed shadow-none'
+                      : 'bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-850 text-slate-400 dark:text-slate-500 cursor-not-allowed shadow-none'
                   }`}
                 >
                   <Send className="w-4 h-4" />
@@ -792,7 +792,7 @@ When modifying an existing file, you MUST output:
           </div>
         </form>
 
-        <span className="text-[10px] text-slate-500 block text-center mt-2.5 font-medium tracking-wide">
+        <span className="text-[10px] text-slate-450 dark:text-slate-500 block text-center mt-2.5 font-medium tracking-wide">
           Vivek Code runs entirely locally. Prompt data and file contexts stay offline.
         </span>
 

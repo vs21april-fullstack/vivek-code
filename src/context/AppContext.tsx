@@ -263,6 +263,20 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
   }, [settings, ollamaModels, activeModel, activeWorkspace]);
 
+  // Synchronize DOM with theme state
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const root = window.document.documentElement;
+      if (theme === 'light') {
+        root.classList.remove('dark');
+        root.classList.add('light');
+      } else {
+        root.classList.remove('light');
+        root.classList.add('dark');
+      }
+    }
+  }, [theme]);
+
   // Handle setting updates
   const saveSettingsMutation = useMutation({
     mutationFn: async (newSettings: Partial<AppSettings>) => {
@@ -287,18 +301,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const setTheme = (t: 'dark' | 'light') => {
     setThemeState(t);
     saveSettings({ theme: t });
-    
-    // Update DOM class list
-    if (typeof window !== 'undefined') {
-      const root = window.document.documentElement;
-      if (t === 'light') {
-        root.classList.remove('dark');
-        root.classList.add('light');
-      } else {
-        root.classList.remove('light');
-        root.classList.add('dark');
-      }
-    }
   };
 
   const setActiveWorkspace = (path: string) => {
